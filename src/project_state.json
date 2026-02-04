@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Build a simple, small encrypted calendar application that supports creating events and tasks with strong (\"military-grade\") encryption.",
+  "existing_features": [
+    {
+      "id": "feature-implement-internet-identity-sign-in-and-require-an-authenticated-session-before-any-calendar-data-events-tasks-can-be-created-viewed-edited-or-deleted",
+      "title": "Implement Internet Identity sign-in and require an authenticated session before any calendar data (events/tasks) can be created, viewed, edited, or deleted.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-client-side-encryption-for-all-event-task-content-using-web-crypto-so-that-the-backend-only-stores-ciphertext-no-plaintext-titles-descriptions-details-use-a-user-provided-passphrase-to-derive-an-encryption-key-pbkdf2-per-user-salt-and-encrypt-decrypt-with-an-authenticated-encryption-scheme-e-g-aes-gcm",
+      "title": "Add client-side encryption for all event/task content using Web Crypto so that the backend only stores ciphertext (no plaintext titles/descriptions/details). Use a user-provided passphrase to derive an encryption key (PBKDF2 + per-user salt) and encrypt/decrypt with an authenticated encryption scheme (e.g., AES-GCM).",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-a-small-simple-ui-that-supports-1-viewing-a-minimal-month-week-list-of-events-2-a-task-list-view-and-3-lightweight-create-edit-forms-for-events-and-tasks-keep-navigation-minimal-e-g-tabs-or-a-compact-sidebar-and-avoid-feature-creep",
+      "title": "Build a small, simple UI that supports: (1) viewing a minimal month/week list of events, (2) a task list view, and (3) lightweight create/edit forms for events and tasks. Keep navigation minimal (e.g., tabs or a compact sidebar) and avoid feature creep.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-use-react-query-for-all-server-interactions-list-create-update-delete-with-proper-loading-and-error-states-and-ensure-the-ui-updates-immediately-after-mutations-invalidate-refetch-or-optimistic-updates",
+      "title": "Use React Query for all server interactions (list/create/update/delete) with proper loading and error states, and ensure the UI updates immediately after mutations (invalidate/refetch or optimistic updates).",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-define-a-coherent-visual-theme-for-a-compact-encrypted-productivity-app-distinct-colors-typography-spacing-and-component-styling-and-apply-it-consistently-across-all-screens-do-not-use-a-blue-purple-primary-palette",
+      "title": "Define a coherent visual theme for a compact encrypted productivity app (distinct colors, typography, spacing, and component styling) and apply it consistently across all screens. Do not use a blue/purple primary palette.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Create a simple, small encrypted calendar application",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Support creating and managing calendar events",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Support creating and managing tasks (to-dos)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Encrypt all calendar data with strong (\"military-grade\") encryption",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Create backend data models and CRUD endpoints in the single Motoko actor to store, list, update, and delete encrypted calendar items per authenticated user (separately supporting 'event' and 'task' types).",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    }
+  ],
+  "architectural_notes": [],
+  "known_issues": [],
+  "isFixRequest": false,
+  "gameProjectType": "none",
+  "projectName": "Simple Encrypted Calendar with Events and Tasks",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

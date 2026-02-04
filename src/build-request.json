@@ -1,0 +1,127 @@
+{
+  "kind": "build_request",
+  "title": "Simple Encrypted Calendar with Events and Tasks",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Implement Internet Identity sign-in and require an authenticated session before any calendar data (events/tasks) can be created, viewed, edited, or deleted.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-2"
+        ],
+        "quotes": [
+          "I want you to create a encrypted calendar application."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Unauthenticated users see a clear sign-in prompt and cannot access calendar content.",
+        "Authenticated users can access their own calendar content."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Add client-side encryption for all event/task content using Web Crypto so that the backend only stores ciphertext (no plaintext titles/descriptions/details). Use a user-provided passphrase to derive an encryption key (PBKDF2 + per-user salt) and encrypt/decrypt with an authenticated encryption scheme (e.g., AES-GCM).",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-2"
+        ],
+        "quotes": [
+          "have them all military encryption"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Events and tasks are encrypted in the browser before being sent to the backend.",
+        "The backend stores only encrypted payloads and required non-sensitive metadata (e.g., IDs, timestamps), not plaintext content.",
+        "On reload, the app requires the passphrase to decrypt and display existing events/tasks for the signed-in user."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Create backend data models and CRUD endpoints in the single Motoko actor to store, list, update, and delete encrypted calendar items per authenticated user (separately supporting 'event' and 'task' types).",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-2"
+        ],
+        "quotes": [
+          "I can create events and tasks"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A signed-in user can create an encrypted event and later list, update, and delete it.",
+        "A signed-in user can create an encrypted task and later list, update, and delete it.",
+        "Users cannot read or modify other users' items (access control enforced by caller identity)."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Build a small, simple UI that supports: (1) viewing a minimal month/week list of events, (2) a task list view, and (3) lightweight create/edit forms for events and tasks. Keep navigation minimal (e.g., tabs or a compact sidebar) and avoid feature creep.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-2"
+        ],
+        "quotes": [
+          "make it simple and small"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Users can add/edit/delete an event from the UI.",
+        "Users can add/edit/delete a task from the UI.",
+        "The UI remains compact with only the necessary screens to manage events and tasks."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Use React Query for all server interactions (list/create/update/delete) with proper loading and error states, and ensure the UI updates immediately after mutations (invalidate/refetch or optimistic updates).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-2"
+        ],
+        "quotes": [
+          "I can create events and tasks"
+        ]
+      },
+      "acceptanceCriteria": [
+        "During fetch/mutations, the UI shows a loading state and handles errors with a visible message.",
+        "After creating/updating/deleting an item, the list reflects the change without requiring a manual refresh."
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Define a coherent visual theme for a compact encrypted productivity app (distinct colors, typography, spacing, and component styling) and apply it consistently across all screens. Do not use a blue/purple primary palette.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-2"
+        ],
+        "quotes": [
+          "make it simple and small"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All screens share a consistent visual system (colors/typography/layout).",
+        "Primary styling does not use a blue/purple dominant palette."
+      ]
+    }
+  ],
+  "constraints": [
+    "Backend must remain a single Motoko actor in backend/main.mo.",
+    "Do not edit frontend files under frontend/src/components/ui or any paths listed as immutable in SYSTEM_CONTEXT.",
+    "All encryption/decryption must occur on the client; the backend must not require plaintext to function."
+  ],
+  "nonGoals": [
+    "Shared calendars, multi-user collaboration, or invitations.",
+    "Recurring events, reminders, notifications, or email integrations.",
+    "Full-text search over encrypted content on the backend.",
+    "Real-time syncing via websockets."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}
