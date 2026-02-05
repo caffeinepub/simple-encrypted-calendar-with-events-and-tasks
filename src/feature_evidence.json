@@ -2,13 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-implement-internet-identity-sign-in-and-require-an-authenticated-session-before-any-calendar-data-events-tasks-can-be-created-viewed-edited-or-deleted",
-      "featureTitle": "Implement Internet Identity sign-in and require an authenticated session before any calendar data (events/tasks) can be created, viewed, edited, or deleted.",
+      "featureId": "feature-fix-the-post-re-sign-in-loading-failure-where-the-events-and-tasks-views-show-errors-like-failed-to-load-tasks-failed-to-load-events-after-the-user-signs-out-and-signs-back-in-by-ensuring-the-backend-actor-is-reliably-recreated-refetched-whenever-the-internet-identity-session-changes-even-when-the-user-logs-back-in-as-the-same-principal-update-the-actor-react-query-cache-key-and-refetch-behavior-so-initializeaccesscontrolwithsecret-runs-for-the-new-session-and-subsequent-calls-do-not-trap-as-unauthorized-stale-session",
+      "featureTitle": "Fix the post re-sign-in loading failure where the Events and Tasks views show errors like “Failed to load tasks” / “Failed to load events” after the user signs out and signs back in, by ensuring the backend actor is reliably recreated/refetched whenever the Internet Identity session changes (even when the user logs back in as the same principal). Update the actor React Query cache key and refetch behavior so `_initializeAccessControlWithSecret(...)` runs for the new session and subsequent calls do not trap as unauthorized/stale-session.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/auth/ProfileSetupModal.tsx",
-        "frontend/src/hooks/useCurrentUserProfile.ts",
-        "frontend/src/main.tsx"
+        "frontend/src/App.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -24,15 +21,13 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-client-side-encryption-for-all-event-task-content-using-web-crypto-so-that-the-backend-only-stores-ciphertext-no-plaintext-titles-descriptions-details-use-a-user-provided-passphrase-to-derive-an-encryption-key-pbkdf2-per-user-salt-and-encrypt-decrypt-with-an-authenticated-encryption-scheme-e-g-aes-gcm",
-      "featureTitle": "Add client-side encryption for all event/task content using Web Crypto so that the backend only stores ciphertext (no plaintext titles/descriptions/details). Use a user-provided passphrase to derive an encryption key (PBKDF2 + per-user salt) and encrypt/decrypt with an authenticated encryption scheme (e.g., AES-GCM).",
+      "featureId": "feature-update-react-query-caching-for-calendar-data-so-events-tasks-queries-are-scoped-to-the-currently-authenticated-principal-and-do-not-reuse-cached-error-data-across-sign-out-sign-in-cycles-specifically-adjust-the-query-keys-used-by-the-events-and-tasks-queries-so-they-change-when-the-signed-in-principal-changes-and-ensure-queries-refetch-cleanly-after-re-authentication-and-unlock",
+      "featureTitle": "Update React Query caching for calendar data so events/tasks queries are scoped to the currently authenticated principal (and do not reuse cached error/data across sign-out/sign-in cycles). Specifically, adjust the query keys used by the events and tasks queries so they change when the signed-in principal changes, and ensure queries refetch cleanly after re-authentication and unlock.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/api/encryptedCalendarCodec.ts",
-        "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
-        "frontend/src/crypto/cryptoTypes.ts",
-        "frontend/src/crypto/useEncryptionSession.ts",
-        "frontend/src/crypto/webCrypto.ts"
+        "frontend/src/api/calendarQueries.ts",
+        "frontend/src/components/layout/Shell.tsx",
+        "frontend/src/features/events/EventsView.tsx",
+        "frontend/src/features/tasks/TasksView.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -48,15 +43,12 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-build-a-small-simple-ui-that-supports-1-viewing-a-minimal-month-week-list-of-events-2-a-task-list-view-and-3-lightweight-create-edit-forms-for-events-and-tasks-keep-navigation-minimal-e-g-tabs-or-a-compact-sidebar-and-avoid-feature-creep",
-      "featureTitle": "Build a small, simple UI that supports: (1) viewing a minimal month/week list of events, (2) a task list view, and (3) lightweight create/edit forms for events and tasks. Keep navigation minimal (e.g., tabs or a compact sidebar) and avoid feature creep.",
+      "featureId": "feature-harden-the-encryption-unlock-state-handling-so-unlocking-cannot-leave-the-ui-in-an-inconsistent-state-during-re-sign-in-flows-ensure-the-encryption-session-isunlocking-state-updates-via-zustand-state-updates-not-by-mutating-the-store-object-directly-and-that-lock-unlock-transitions-do-not-prevent-calendar-queries-from-running-when-prerequisites-actor-key-are-satisfied",
+      "featureTitle": "Harden the encryption unlock state handling so unlocking cannot leave the UI in an inconsistent state during re-sign-in flows. Ensure the encryption session “isUnlocking” state updates via Zustand state updates (not by mutating the store object directly), and that lock/unlock transitions do not prevent calendar queries from running when prerequisites (actor + key) are satisfied.",
       "files": [
-        "frontend/src/App.tsx",
+        "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
         "frontend/src/components/layout/Shell.tsx",
-        "frontend/src/features/events/EventFormDialog.tsx",
-        "frontend/src/features/events/EventsView.tsx",
-        "frontend/src/features/tasks/TaskFormDialog.tsx",
-        "frontend/src/features/tasks/TasksView.tsx"
+        "frontend/src/crypto/useEncryptionSession.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -67,51 +59,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-use-react-query-for-all-server-interactions-list-create-update-delete-with-proper-loading-and-error-states-and-ensure-the-ui-updates-immediately-after-mutations-invalidate-refetch-or-optimistic-updates",
-      "featureTitle": "Use React Query for all server interactions (list/create/update/delete) with proper loading and error states, and ensure the UI updates immediately after mutations (invalidate/refetch or optimistic updates).",
-      "files": [
-        "frontend/src/api/calendarMutations.ts",
-        "frontend/src/api/calendarQueries.ts",
-        "frontend/src/features/events/EventsView.tsx",
-        "frontend/src/features/tasks/TasksView.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-define-a-coherent-visual-theme-for-a-compact-encrypted-productivity-app-distinct-colors-typography-spacing-and-component-styling-and-apply-it-consistently-across-all-screens-do-not-use-a-blue-purple-primary-palette",
-      "featureTitle": "Define a coherent visual theme for a compact encrypted productivity app (distinct colors, typography, spacing, and component styling) and apply it consistently across all screens. Do not use a blue/purple primary palette.",
-      "files": [
-        "frontend/index.css",
-        "frontend/src/components/layout/Shell.tsx",
-        "frontend/src/index.css",
-        "frontend/tailwind.config.js"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-6"
+        "REQ-3"
       ],
       "confidence": "high"
     }

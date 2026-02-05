@@ -5,18 +5,32 @@ import { TaskCard } from './TaskCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, CheckSquare, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Plus, CheckSquare, AlertCircle, RefreshCw } from 'lucide-react';
 
 export function TasksView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { data: tasks, isLoading, error } = useGetTasks();
+  const { data: tasks, isLoading, error, refetch } = useGetTasks();
 
   if (error) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>Failed to load tasks. Please try again.</AlertDescription>
+        <AlertTitle>Failed to load tasks</AlertTitle>
+        <AlertDescription className="mt-2 space-y-2">
+          <p>{error.message}</p>
+          <div className="flex gap-2 mt-3">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => refetch()}
+              className="gap-2"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </Button>
+          </div>
+        </AlertDescription>
       </Alert>
     );
   }

@@ -1,14 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Build a simple encrypted calendar app where authenticated users can create and manage events and tasks, with all sensitive content encrypted client-side.
+**Goal:** Fix events/tasks failing to load after signing out and back in by ensuring the frontend reinitializes the backend actor and React Query state for the new Internet Identity session, and by making unlock state transitions reliable.
 
 **Planned changes:**
-- Add Internet Identity sign-in and gate all calendar/task functionality behind an authenticated session.
-- Implement client-side encryption/decryption for event/task content using Web Crypto (PBKDF2-derived key + AES-GCM), requiring a user passphrase to view existing data after reload.
-- Create a single Motoko actor backend with per-user CRUD endpoints/models for encrypted calendar items (supporting separate `event` and `task` types) and enforce access control by caller identity.
-- Build a compact UI with minimal navigation: a month/week-style events view, a task list view, and lightweight create/edit forms.
-- Use React Query for all list/create/update/delete interactions with loading/error states and automatic UI refresh after mutations.
-- Apply a consistent visual theme (not blue/purple dominant) across all screens.
+- Recreate/refetch the backend actor whenever the Internet Identity session changes (including re-login as the same principal) so access control initialization runs for the active session before events/tasks queries execute.
+- Update React Query keys and refetch/invalidation behavior so events/tasks queries are scoped to the currently authenticated principal and do not reuse cached errors/data across sign-out/sign-in cycles.
+- Harden encryption unlock flow state updates by using proper Zustand state updates (no direct mutation) to prevent stuck unlocking/loading states and ensure calendar queries enable and run once actor + key prerequisites are satisfied.
 
-**User-visible outcome:** Users can sign in with Internet Identity, enter a passphrase to decrypt their data, then create/view/edit/delete encrypted events and tasks in a small, themed interface; unauthenticated users cannot access any calendar content.
+**User-visible outcome:** After signing out and signing back in (then unlocking), Events and Tasks load automatically without “Failed to load events/tasks” errors and without requiring a manual page refresh or Retry.

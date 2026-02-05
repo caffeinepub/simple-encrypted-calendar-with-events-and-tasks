@@ -1,41 +1,43 @@
 import { create } from 'zustand';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { deriveKey, generateSalt, getSalt, storeSalt } from './webCrypto';
+import { useEffect } from 'react';
 
 interface EncryptionSessionState {
   key: CryptoKey | null;
   isUnlocking: boolean;
-  unlock: (passphrase: string) => Promise<void>;
+  setKey: (key: CryptoKey | null) => void;
+  setIsUnlocking: (isUnlocking: boolean) => void;
   lock: () => void;
+  reset: () => void;
 }
 
 const useEncryptionStore = create<EncryptionSessionState>((set) => ({
   key: null,
   isUnlocking: false,
-  unlock: async (passphrase: string) => {
-    set({ isUnlocking: true });
-    try {
-      // This will be set properly in the hook
-      throw new Error('Use the hook version');
-    } finally {
-      set({ isUnlocking: false });
-    }
-  },
-  lock: () => {
-    set({ key: null });
-  },
+  setKey: (key) => set({ key }),
+  setIsUnlocking: (isUnlocking) => set({ isUnlocking }),
+  lock: () => set({ key: null }),
+  reset: () => set({ key: null, isUnlocking: false }),
 }));
 
 export function useEncryptionSession() {
   const { identity } = useInternetIdentity();
   const store = useEncryptionStore();
 
+  // Reset encryption state when identity changes (logout or principal change)
+  useEffect(() => {
+    if (!identity) {
+      store.reset();
+    }
+  }, [identity, store]);
+
   const unlock = async (passphrase: string) => {
     if (!identity) throw new Error('Not authenticated');
     
     const principalId = identity.getPrincipal().toString();
     
-    store.isUnlocking = true;
+    store.setIsUnlocking(true);
     try {
       let salt = getSalt(principalId);
       if (!salt) {
@@ -44,9 +46,10 @@ export function useEncryptionSession() {
       }
 
       const key = await deriveKey(passphrase, salt);
-      useEncryptionStore.setState({ key, isUnlocking: false });
+      store.setKey(key);
+      store.setIsUnlocking(false);
     } catch (error) {
-      useEncryptionStore.setState({ isUnlocking: false });
+      store.setIsUnlocking(false);
       throw error;
     }
   };

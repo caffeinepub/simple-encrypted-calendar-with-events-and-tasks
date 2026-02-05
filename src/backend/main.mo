@@ -1,5 +1,4 @@
 import Map "mo:core/Map";
-import Set "mo:core/Set";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 import Iter "mo:core/Iter";
@@ -7,10 +6,12 @@ import Array "mo:core/Array";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+
+
 actor {
   type Timestamp = Nat64;
-  type EventId = Nat;
-  type TaskId = Nat;
+  public type EventId = Nat;
+  public type TaskId = Nat;
 
   type EncryptedEvent = {
     id : EventId;
@@ -36,21 +37,15 @@ actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // User profiles
   let userProfiles = Map.empty<Principal, UserProfile>();
-
-  // Each user is mapped to a set of unique event IDs
   let nextEventId = Map.empty<Principal, EventId>();
-  let userEvents = Map.empty<Principal, Map.Map<EventId, EncryptedEvent>>();
-
-  // Each user is mapped to a set of unique task IDs
   let nextTaskId = Map.empty<Principal, TaskId>();
+  let userEvents = Map.empty<Principal, Map.Map<EventId, EncryptedEvent>>();
   let userTasks = Map.empty<Principal, Map.Map<TaskId, EncryptedTask>>();
 
-  // User profile management functions
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
+      Runtime.trap("Unauthorized: Only users can save profiles");
     };
     userProfiles.get(caller);
   };
@@ -69,10 +64,9 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // Calendar event management functions
   public shared ({ caller }) func addEvent(startTime : Timestamp, endTime : Timestamp, encryptedTitle : Text, encryptedDescription : Text) : async EventId {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create events");
+      Runtime.trap("Unauthorized: Only users can add events");
     };
 
     // Get next ID for the user, default to 0 if not present
@@ -103,7 +97,7 @@ actor {
 
   public shared ({ caller }) func addTask(deadline : ?Timestamp, encryptedTitle : Text, encryptedDetails : Text) : async TaskId {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create tasks");
+      Runtime.trap("Unauthorized: Only users can add tasks");
     };
 
     // Get next ID for the user, default to 0 if not present

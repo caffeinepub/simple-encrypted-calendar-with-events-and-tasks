@@ -13,15 +13,20 @@ export function Shell() {
   const [activeTab, setActiveTab] = useState<'events' | 'tasks'>('events');
   const { clear } = useInternetIdentity();
   const { data: userProfile } = useGetCallerUserProfile();
-  const { lock, isUnlocked } = useEncryptionSession();
+  const { lock } = useEncryptionSession();
   const queryClient = useQueryClient();
 
   const handleLogout = async () => {
-    await clear();
+    // Clear encryption state first
+    lock();
+    // Clear all cached queries
     queryClient.clear();
+    // Then logout
+    await clear();
   };
 
   const handleLock = () => {
+    // Lock clears the encryption key
     lock();
   };
 

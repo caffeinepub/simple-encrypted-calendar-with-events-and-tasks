@@ -1,70 +1,31 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-04T23:10:20.085Z",
-  "summary": "Diff adds a new Motoko backend actor and a new React frontend implementing authenticated gating, client-side AES-GCM encryption with PBKDF2-derived keys, and React Query-based queries/mutations for events/tasks. However, several requested CRUD/edit and calendar viewing requirements are not clearly implemented (notably update flows and month/week calendar view), and the backend introduces extra user-profile/admin access-control features not requested.",
+  "generatedAt": "2026-02-05T00:11:29.870Z",
+  "summary": "Diff scopes events/tasks React Query keys by principal plus a per-login \"sessionFingerprint\", clears the query cache on logout, and hardens the encryption Zustand store updates for isUnlocking/reset. However, there is no evidence that the backend actor creation/react-query key/refetch behavior itself was updated to guarantee actor re-creation/re-initialization on Internet Identity session changes (REQ-1).",
   "missing_requirements": [
     {
-      "id": "REQ-3",
-      "requirement": "Backend CRUD endpoints to store, list, update, and delete encrypted events and tasks per authenticated user (separately supporting 'event' and 'task' types), with access control enforced by caller identity.",
-      "reason": "The backend file is truncated and only shows addEvent/addTask and profile methods; required list/update/delete methods for both events and tasks are not evidenced. Frontend calls actor.getEvents/getTasks/deleteEvent/deleteTask/updateTaskStatus, but their backend implementations are not visible in the provided diff summary.",
+      "id": "REQ-1",
+      "requirement": "Ensure the backend actor is reliably recreated/refetched whenever the Internet Identity session changes (even for the same principal), updating the actor React Query cache key/refetch behavior so `_initializeAccessControlWithSecret(...)` runs for the new session and subsequent calls do not trap as unauthorized/stale-session.",
+      "reason": "The diff shows changes to events/tasks query keys and cache clearing on logout, but does not show any modifications to the actor hook/caching (e.g., `frontend/src/hooks/useActor.ts`) or any logic that forces actor re-creation/re-initialization on identity/session changes. Without actor-side changes, it’s unclear that `_initializeAccessControlWithSecret(...)` will reliably run for the new session.",
       "evidence": [
-        "backend/main.mo (truncated)",
         "frontend/src/api/calendarQueries.ts",
-        "frontend/src/api/calendarMutations.ts"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "requirement": "UI supports (1) viewing a minimal month/week list of events, (2) a task list view, and (3) lightweight create/edit forms for events and tasks; users can add/edit/delete events and tasks.",
-      "reason": "Tasks view/list appears implemented, and create/delete flows exist, but event viewing is a card grid rather than a month/week list. Also, edit flows appear not implemented correctly: EventFormDialog/TaskFormDialog use useAddEvent/useAddTask even when an existing item is passed, with no update mutation/hooks shown for editing event/task content.",
-      "evidence": [
-        "frontend/src/features/events/EventsView.tsx",
-        "frontend/src/features/events/EventFormDialog.tsx (truncated)",
-        "frontend/src/api/calendarMutations.ts",
-        "frontend/src/features/tasks/TaskFormDialog.tsx (truncated)"
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "requirement": "Define and apply a coherent visual theme across screens; primary styling must not use a blue/purple dominant palette.",
-      "reason": "The diff shows use of theme variables/classes (e.g., bg-primary/10, text-primary) but does not provide the actual color palette/theme definitions, so compliance with the 'no blue/purple dominant palette' constraint cannot be verified from the provided changes.",
-      "evidence": [
-        "frontend/src/components/auth/LoginScreen.tsx",
-        "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
+        "frontend/src/App.tsx",
         "frontend/src/components/layout/Shell.tsx"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "User profile creation/setup flow (name) required before accessing the app.",
-      "reason": "BuildRequest did not require user profiles; it required Internet Identity auth + passphrase unlock for encrypted content, but not collecting/storing a profile name.",
+      "description": "Added/modified URL parameter/sessionStorage utilities unrelated to the re-sign-in events/tasks loading regression.",
+      "reason": "BuildRequest focuses on actor/session invalidation, React Query scoping for calendar data, and encryption unlock state handling. The URL params utility changes are not referenced by any requirement.",
       "evidence": [
-        "backend/main.mo (truncated)",
-        "frontend/src/hooks/useCurrentUserProfile.ts",
-        "frontend/src/components/auth/ProfileSetupModal.tsx",
-        "frontend/src/App.tsx"
+        "frontend/src/utils/urlParams.ts"
       ]
     },
     {
-      "description": "Admin/role-based access control initialization via secret token and authorization mixins.",
-      "reason": "BuildRequest only required per-caller access control for calendar items; it did not request an admin system or secret-token initialization.",
-      "evidence": [
-        "backend/main.mo (truncated)",
-        "frontend/src/hooks/useActor.ts"
-      ]
-    },
-    {
-      "description": "Marketing/security claims in UI copy (e.g., 'military-grade encryption', explicitly 'AES-256-GCM').",
-      "reason": "Not requested; requirement only specified use of Web Crypto PBKDF2 + AES-GCM (example) and client-side encryption behavior, not marketing language.",
-      "evidence": [
-        "frontend/src/components/auth/LoginScreen.tsx"
-      ]
-    },
-    {
-      "description": "Branded footer credit/link to caffeine.ai.",
-      "reason": "Not requested in UI requirements; may be extraneous to the compact productivity app scope.",
+      "description": "UI/branding changes in the Shell footer (copyright year, external link) not directly tied to fixing the re-sign-in loading regression.",
+      "reason": "Not requested by any REQ; could be incidental but is not part of the specified fix scope.",
       "evidence": [
         "frontend/src/components/layout/Shell.tsx"
       ]
@@ -72,35 +33,15 @@
   ],
   "confidence": 0.62,
   "changed_files": [
-    "all_files_summary.json",
-    "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/index.css",
-    "frontend/index.html",
     "frontend/src/App.tsx",
-    "frontend/src/api/calendarMutations.ts",
     "frontend/src/api/calendarQueries.ts",
-    "frontend/src/api/encryptedCalendarCodec.ts",
-    "frontend/src/components/auth/LoginScreen.tsx",
-    "frontend/src/components/auth/ProfileSetupModal.tsx",
     "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
     "frontend/src/components/layout/Shell.tsx",
-    "frontend/src/crypto/cryptoTypes.ts",
     "frontend/src/crypto/useEncryptionSession.ts",
-    "frontend/src/crypto/webCrypto.ts",
-    "frontend/src/features/events/EventCard.tsx",
-    "frontend/src/features/events/EventFormDialog.tsx",
     "frontend/src/features/events/EventsView.tsx",
-    "frontend/src/features/tasks/TaskCard.tsx",
-    "frontend/src/features/tasks/TaskFormDialog.tsx",
     "frontend/src/features/tasks/TasksView.tsx",
-    "frontend/src/hooks/useActor.ts",
-    "frontend/src/hooks/useCurrentUserProfile.ts",
-    "frontend/src/hooks/useInternetIdentity.ts",
-    "frontend/src/index.css",
-    "frontend/src/main.tsx",
     "frontend/src/utils/urlParams.ts",
-    "frontend/tailwind.config.js",
     "project_state.json"
   ]
 }

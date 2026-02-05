@@ -1,124 +1,72 @@
 {
   "kind": "build_request",
-  "title": "Simple Encrypted Calendar with Events and Tasks",
-  "priority": "normal",
+  "title": "Fix events/tasks failing to load after re-sign-in (actor + query cache invalidation)",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement Internet Identity sign-in and require an authenticated session before any calendar data (events/tasks) can be created, viewed, edited, or deleted.",
+      "text": "Fix the post re-sign-in loading failure where the Events and Tasks views show errors like “Failed to load tasks” / “Failed to load events” after the user signs out and signs back in, by ensuring the backend actor is reliably recreated/refetched whenever the Internet Identity session changes (even when the user logs back in as the same principal). Update the actor React Query cache key and refetch behavior so `_initializeAccessControlWithSecret(...)` runs for the new session and subsequent calls do not trap as unauthorized/stale-session.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-2"
+          "msg-6"
         ],
         "quotes": [
-          "I want you to create a encrypted calendar application."
+          "after I re-sign in, it's having loading issues. It's saying, fail to load task",
+          "I signed out. I signed back in. But when I signed in, the events did not show up. Instead, it said fail to load task or fail to load events."
         ]
       },
       "acceptanceCriteria": [
-        "Unauthenticated users see a clear sign-in prompt and cannot access calendar content.",
-        "Authenticated users can access their own calendar content."
+        "Using the reproduction steps (sign in → create an event + task → save → lock → sign out → sign back in → unlock), the app loads events and tasks successfully without showing “Failed to load events” or “Failed to load tasks”.",
+        "After signing back in, the frontend must not reuse an actor instance initialized with a previous identity session; the actor must be re-created or re-initialized for the new identity session before events/tasks queries run.",
+        "No manual page refresh is required to make events/tasks load after re-sign-in."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add client-side encryption for all event/task content using Web Crypto so that the backend only stores ciphertext (no plaintext titles/descriptions/details). Use a user-provided passphrase to derive an encryption key (PBKDF2 + per-user salt) and encrypt/decrypt with an authenticated encryption scheme (e.g., AES-GCM).",
-      "target": "both",
+      "text": "Update React Query caching for calendar data so events/tasks queries are scoped to the currently authenticated principal (and do not reuse cached error/data across sign-out/sign-in cycles). Specifically, adjust the query keys used by the events and tasks queries so they change when the signed-in principal changes, and ensure queries refetch cleanly after re-authentication and unlock.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-2"
+          "msg-6"
         ],
         "quotes": [
-          "have them all military encryption"
+          "when I signed in, the events did not show up. Instead, it said fail to load task or fail to load events."
         ]
       },
       "acceptanceCriteria": [
-        "Events and tasks are encrypted in the browser before being sent to the backend.",
-        "The backend stores only encrypted payloads and required non-sensitive metadata (e.g., IDs, timestamps), not plaintext content.",
-        "On reload, the app requires the passphrase to decrypt and display existing events/tasks for the signed-in user."
+        "Signing out and signing back in does not leave EventsView/TasksView stuck in an error state due to previously cached query errors.",
+        "Events and tasks data shown always corresponds to the currently signed-in principal.",
+        "After unlocking the encryption session post-login, events/tasks automatically load without requiring the user to press Retry."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Create backend data models and CRUD endpoints in the single Motoko actor to store, list, update, and delete encrypted calendar items per authenticated user (separately supporting 'event' and 'task' types).",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-2"
-        ],
-        "quotes": [
-          "I can create events and tasks"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A signed-in user can create an encrypted event and later list, update, and delete it.",
-        "A signed-in user can create an encrypted task and later list, update, and delete it.",
-        "Users cannot read or modify other users' items (access control enforced by caller identity)."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Build a small, simple UI that supports: (1) viewing a minimal month/week list of events, (2) a task list view, and (3) lightweight create/edit forms for events and tasks. Keep navigation minimal (e.g., tabs or a compact sidebar) and avoid feature creep.",
+      "text": "Harden the encryption unlock state handling so unlocking cannot leave the UI in an inconsistent state during re-sign-in flows. Ensure the encryption session “isUnlocking” state updates via Zustand state updates (not by mutating the store object directly), and that lock/unlock transitions do not prevent calendar queries from running when prerequisites (actor + key) are satisfied.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-2"
+          "msg-6"
         ],
         "quotes": [
-          "make it simple and small"
+          "it worked for a minute, but then after I re-sign in, it's having loading issues."
         ]
       },
       "acceptanceCriteria": [
-        "Users can add/edit/delete an event from the UI.",
-        "Users can add/edit/delete a task from the UI.",
-        "The UI remains compact with only the necessary screens to manage events and tasks."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Use React Query for all server interactions (list/create/update/delete) with proper loading and error states, and ensure the UI updates immediately after mutations (invalidate/refetch or optimistic updates).",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-2"
-        ],
-        "quotes": [
-          "I can create events and tasks"
-        ]
-      },
-      "acceptanceCriteria": [
-        "During fetch/mutations, the UI shows a loading state and handles errors with a visible message.",
-        "After creating/updating/deleting an item, the list reflects the change without requiring a manual refresh."
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Define a coherent visual theme for a compact encrypted productivity app (distinct colors, typography, spacing, and component styling) and apply it consistently across all screens. Do not use a blue/purple primary palette.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-2"
-        ],
-        "quotes": [
-          "make it simple and small"
-        ]
-      },
-      "acceptanceCriteria": [
-        "All screens share a consistent visual system (colors/typography/layout).",
-        "Primary styling does not use a blue/purple dominant palette."
+        "Unlocking updates the UI state consistently (no stuck loading/spinner states), including after a sign-out/sign-in cycle.",
+        "After unlocking, events/tasks queries become enabled and execute successfully when the actor is ready."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo.",
-    "Do not edit frontend files under frontend/src/components/ui or any paths listed as immutable in SYSTEM_CONTEXT.",
-    "All encryption/decryption must occur on the client; the backend must not require plaintext to function."
+    "Do not edit files under frontend/src/components/ui (shadcn/ui components are read-only and must only be composed).",
+    "Do not modify immutable paths listed in SYSTEM_CONTEXT (e.g., frontend/src/hooks/useInternetIdentity.ts(x), frontend/src/hooks/useActor.ts is allowed).",
+    "Backend must remain a single Motoko actor (no additional canisters/services)."
   ],
   "nonGoals": [
-    "Shared calendars, multi-user collaboration, or invitations.",
-    "Recurring events, reminders, notifications, or email integrations.",
-    "Full-text search over encrypted content on the backend.",
-    "Real-time syncing via websockets."
+    "Do not add new product features to events/tasks beyond fixing the re-sign-in loading regression.",
+    "Do not change the encrypted event/task data model or introduce new backend storage unless required to fix this specific loading issue.",
+    "Do not add third-party authentication providers beyond Internet Identity."
   ],
   "imageRequirements": {
     "required": [],

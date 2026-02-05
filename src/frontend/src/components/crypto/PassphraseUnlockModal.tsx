@@ -62,6 +62,7 @@ export function PassphraseUnlockModal({ onLogout }: PassphraseUnlockModalProps) 
               onChange={(e) => setPassphrase(e.target.value)}
               placeholder="Enter your passphrase"
               autoFocus
+              disabled={isUnlocking}
             />
             <p className="text-xs text-muted-foreground">
               This passphrase encrypts all your calendar data. Choose a strong, memorable passphrase.
@@ -71,7 +72,7 @@ export function PassphraseUnlockModal({ onLogout }: PassphraseUnlockModalProps) 
             <Button type="submit" className="flex-1" disabled={isUnlocking}>
               {isUnlocking ? 'Unlocking...' : 'Unlock'}
             </Button>
-            <Button type="button" variant="outline" onClick={onLogout}>
+            <Button type="button" variant="outline" onClick={onLogout} disabled={isUnlocking}>
               Logout
             </Button>
           </div>

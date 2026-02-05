@@ -1,187 +1,82 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Encrypted Calendar (Events + Tasks) — Frontend Plan",
+  "title": "Fix re-sign-in actor/session scoping and React Query cache invalidation for events/tasks",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Require Internet Identity authentication before any calendar data is accessible, with a clear sign-in prompt and per-user profile setup.",
+      "summary": "Ensure the backend actor is recreated/refetched on any Internet Identity session change (even same principal) so access-control initialization reruns and events/tasks no longer fail after re-sign-in.",
       "acceptanceCriteria": [
-        "Unauthenticated users see a clear sign-in prompt and cannot access calendar content.",
-        "Authenticated users can access their own calendar content."
+        "Using the reproduction steps (sign in → create an event + task → save → lock → sign out → sign back in → unlock), the app loads events and tasks successfully without showing “Failed to load events” or “Failed to load tasks”.",
+        "After signing back in, the frontend must not reuse an actor instance initialized with a previous identity session; the actor must be re-created or re-initialized for the new identity session before events/tasks queries run.",
+        "No manual page refresh is required to make events/tasks load after re-sign-in."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/App.tsx",
-          "operation": "create",
-          "description": "Create the root app component that gates all calendar UI behind Internet Identity authentication (show a sign-in screen when unauthenticated, and the calendar UI only when authenticated). Use the selected \"authorization\" component guidance for login gating; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/auth/LoginButton.tsx",
-          "operation": "create",
-          "description": "Add a login/logout button using Internet Identity via the existing useInternetIdentity hook. Ensure logout clears React Query cached data. Use the selected \"authorization\" component guidance for the login/logout UX; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useCurrentUserProfile.ts",
-          "operation": "create",
-          "description": "Create a React Query hook that loads the caller profile (getCallerUserProfile) once an authenticated actor is available, and exposes loading/fetched flags that avoid profile-setup modal flash. Use the selected \"authorization\" component guidance for profile queries; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/auth/ProfileSetupModal.tsx",
-          "operation": "create",
-          "description": "Create a compact modal prompting for a display name on first login, saving it via saveCallerUserProfile. Use the selected \"authorization\" component guidance for first-time profile setup; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/main.tsx",
+          "path": "frontend/src/hooks/useActor.ts",
           "operation": "modify",
-          "description": "Wire the new App.tsx into the existing app entry and ensure QueryClient + InternetIdentityProvider remain wrapped around the app so authentication state is available globally."
+          "description": "Update the actor React Query cache key to include a per-auth-session fingerprint (not just principal) so a new actor is created after re-login even when the principal is unchanged; adjust refetch behavior so `_initializeAccessControlWithSecret(...)` reliably runs for the new session and dependent queries only refetch once the new actor is ready. Use the authorization component’s frontend guidance for clearing cached application data on logout/session changes; verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Ensure the app shell and calendar views only render once the updated actor/session prerequisites are satisfied (authenticated + profile + unlocked), preventing events/tasks queries from running against a stale actor during re-sign-in transitions. Use the authorization component’s frontend guidance (logged-in required before showing application data); verify the component's usage instructions before implementing."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Encrypt/decrypt event/task content client-side using Web Crypto with a passphrase-derived key, ensuring ciphertext-only storage and passphrase required on reload.",
+      "summary": "Scope calendar React Query caches to the currently authenticated principal/session and ensure clean refetch after re-authentication and unlock.",
       "acceptanceCriteria": [
-        "Events and tasks are encrypted in the browser before being sent to the backend.",
-        "The backend stores only encrypted payloads and required non-sensitive metadata (e.g., IDs, timestamps), not plaintext content.",
-        "On reload, the app requires the passphrase to decrypt and display existing events/tasks for the signed-in user."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/crypto/cryptoTypes.ts",
-          "operation": "create",
-          "description": "Define shared types for encrypted payload packaging (e.g., AES-GCM iv, ciphertext, versioning fields) to be serialized into the encryptedTitle/encryptedDescription/encryptedDetails strings stored in the backend."
-        },
-        {
-          "path": "frontend/src/crypto/webCrypto.ts",
-          "operation": "create",
-          "description": "Implement Web Crypto utilities: per-user salt generation/storage, PBKDF2 key derivation from user passphrase, and AES-GCM authenticated encryption/decryption helpers that serialize/deserialize to/from strings safe for backend storage."
-        },
-        {
-          "path": "frontend/src/crypto/useEncryptionSession.ts",
-          "operation": "create",
-          "description": "Create a small session hook that holds the derived CryptoKey in-memory only (no persistent storage), exposes locked/unlocked state, and supports explicit lock on logout so reload always requires re-entering passphrase."
-        },
-        {
-          "path": "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
-          "operation": "create",
-          "description": "Add a modal that prompts for a passphrase after authentication and before showing decrypted calendar content; on success derives the key and unlocks the session; on failure shows an error and remains locked."
-        },
-        {
-          "path": "frontend/src/api/encryptedCalendarCodec.ts",
-          "operation": "create",
-          "description": "Implement mapping helpers that convert between plaintext UI models and backend encrypted models: encrypt fields before mutations; decrypt fields after queries; keep non-sensitive metadata (timestamps/completion/deadline) unencrypted."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Integrate the passphrase unlock flow: after authenticated + profile-ready, require passphrase entry before rendering any decrypted events/tasks UI, and ensure locking occurs on logout."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Build a compact UI with minimal navigation supporting event month/week viewing and a task list, plus lightweight create/edit forms for both.",
-      "acceptanceCriteria": [
-        "Users can add/edit/delete an event from the UI.",
-        "Users can add/edit/delete a task from the UI.",
-        "The UI remains compact with only the necessary screens to manage events and tasks."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/layout/Shell.tsx",
-          "operation": "create",
-          "description": "Create a compact application shell with minimal navigation (e.g., two tabs: Events, Tasks) and a small header area for profile name + LoginButton."
-        },
-        {
-          "path": "frontend/src/features/events/EventsView.tsx",
-          "operation": "create",
-          "description": "Create the Events view that provides a minimal month display with selectable day and a simple week/list toggle for events, showing decrypted titles/descriptions only when unlocked."
-        },
-        {
-          "path": "frontend/src/features/events/EventFormDialog.tsx",
-          "operation": "create",
-          "description": "Add a lightweight create/edit dialog for events (start/end time, title, description). Ensure edit pre-fills decrypted values and save re-encrypts before sending."
-        },
-        {
-          "path": "frontend/src/features/tasks/TasksView.tsx",
-          "operation": "create",
-          "description": "Create the Tasks view that shows a compact list with completion toggle and optional deadline, using decrypted title/details only when unlocked."
-        },
-        {
-          "path": "frontend/src/features/tasks/TaskFormDialog.tsx",
-          "operation": "create",
-          "description": "Add a lightweight create/edit dialog for tasks (title, details, optional deadline). Ensure edit pre-fills decrypted values and save re-encrypts before sending."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Wire the Shell + EventsView + TasksView into the authenticated/unlocked application area so there are no orphan screens/components."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Use React Query for all calendar server interactions with loading/error states and immediate UI updates after mutations.",
-      "acceptanceCriteria": [
-        "During fetch/mutations, the UI shows a loading state and handles errors with a visible message.",
-        "After creating/updating/deleting an item, the list reflects the change without requiring a manual refresh."
+        "Signing out and signing back in does not leave EventsView/TasksView stuck in an error state due to previously cached query errors.",
+        "Events and tasks data shown always corresponds to the currently signed-in principal.",
+        "After unlocking the encryption session post-login, events/tasks automatically load without requiring the user to press Retry."
       ],
       "file_operations": [
         {
           "path": "frontend/src/api/calendarQueries.ts",
-          "operation": "create",
-          "description": "Create React Query hooks for listing events/tasks using the actor (getEvents/getTasks) and for mutations (add/delete/update). Include query keys scoped to the authenticated principal and ensure errors are surfaced in the UI."
-        },
-        {
-          "path": "frontend/src/api/calendarMutations.ts",
-          "operation": "create",
-          "description": "Implement mutation helpers that (1) encrypt plaintext using the encryption session before calling backend functions and (2) invalidate/refetch relevant list queries on success (or apply optimistic updates where safe)."
+          "operation": "modify",
+          "description": "Adjust events/tasks query keys to include the current principal (and, if available from the actor/auth layer, the same session fingerprint used for the actor) so cached data/errors cannot leak across sign-out/sign-in; update query options to refetch cleanly when the actor becomes ready and when the encryption session transitions to unlocked (e.g., refetch-on-mount and avoiding reuse of cached error states)."
         },
         {
           "path": "frontend/src/features/events/EventsView.tsx",
           "operation": "modify",
-          "description": "Integrate React Query list + mutations with explicit loading and error states (e.g., list skeleton/spinner, inline error banner) and ensure the events list updates immediately after create/edit/delete."
+          "description": "Remove reliance on manual page refresh to recover from auth/session transitions by ensuring the view’s error/loading UX aligns with the updated query behavior (automatic refetch after session+unlock readiness), while keeping UI composition limited to existing shadcn/ui components (read-only under frontend/src/components/ui)."
         },
         {
           "path": "frontend/src/features/tasks/TasksView.tsx",
           "operation": "modify",
-          "description": "Integrate React Query list + mutations with explicit loading and error states and ensure the task list updates immediately after create/edit/delete and completion toggles."
-        },
-        {
-          "path": "frontend/src/backend.d.ts",
-          "operation": "modify",
-          "description": "Align frontend typing with required calendar interactions by adding any missing calendar-related backend function signatures needed by the UI (e.g., event/task update functions if available in the deployed backend), so React Query hooks can be type-safe."
-        }
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "summary": "Apply a coherent compact visual theme (non-blue/purple primary palette) consistently across the app.",
-      "acceptanceCriteria": [
-        "All screens share a consistent visual system (colors/typography/layout).",
-        "Primary styling does not use a blue/purple dominant palette."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/index.css",
-          "operation": "modify",
-          "description": "Update global CSS variables (primary/secondary/accent/sidebar/chart) to a non-blue/purple dominant palette (e.g., charcoal + green/amber) and adjust base typography/spacing tokens to support a compact productivity UI."
-        },
-        {
-          "path": "frontend/src/index.css",
-          "operation": "create",
-          "description": "Create a src-level stylesheet imported by main.tsx that forwards/includes the real global styles (frontend/index.css) so theming is applied reliably without changing immutable UI component paths."
-        },
-        {
-          "path": "frontend/tailwind.config.js",
-          "operation": "modify",
-          "description": "Ensure Tailwind theme usage remains aligned with CSS variable tokens and that the configured design system supports the updated non-blue/purple palette consistently across components."
+          "description": "Align tasks view error/loading UX with the updated principal/session-scoped query keys and refetch behavior so the view recovers automatically after re-login + unlock without requiring Retry or Refresh Page, composing (not editing) shadcn/ui components."
         },
         {
           "path": "frontend/src/components/layout/Shell.tsx",
           "operation": "modify",
-          "description": "Apply consistent spacing, typography, and component styling in the shell (header, tabs, content container) to match the updated theme and keep the UI compact."
+          "description": "On logout, clear all cached application data and ensure any user-scoped in-memory state is reset so the next sign-in starts from a clean cache (per authorization component guidance); verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Fix encryption unlock state handling to use proper Zustand updates and ensure lock/unlock transitions don’t block calendar queries once actor + key prerequisites are met.",
+      "acceptanceCriteria": [
+        "Unlocking updates the UI state consistently (no stuck loading/spinner states), including after a sign-out/sign-in cycle.",
+        "After unlocking, events/tasks queries become enabled and execute successfully when the actor is ready."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/crypto/useEncryptionSession.ts",
+          "operation": "modify",
+          "description": "Replace direct Zustand store mutation for `isUnlocking` with proper Zustand state updates; ensure lock/unlock transitions are consistent and reset appropriately on identity changes (e.g., logout or principal change) so the UI cannot remain in a stale unlocking/loading state and queries can enable when actor + key are satisfied."
+        },
+        {
+          "path": "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
+          "operation": "modify",
+          "description": "Ensure the unlock modal reflects the corrected `isUnlocking` Zustand state (button disabling and label updates) so it cannot get stuck during re-sign-in flows and unlock reliably triggers the app to proceed to the shell where queries run."
+        },
+        {
+          "path": "frontend/src/components/layout/Shell.tsx",
+          "operation": "modify",
+          "description": "Ensure lock/logout actions reset encryption state predictably (lock clears key; logout clears key + cached queries) so subsequent re-login and unlock transitions always allow calendar queries to run when ready, while composing (not editing) shadcn/ui components."
         }
       ]
     }
