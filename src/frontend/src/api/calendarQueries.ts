@@ -3,33 +3,16 @@ import { useActor } from '../hooks/useActor';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useEncryptionSession } from '../crypto/useEncryptionSession';
 import { decryptEvent, decryptTask, type DecryptedEvent, type DecryptedTask } from './encryptedCalendarCodec';
-import { useRef, useEffect } from 'react';
-
-// Hook to create a session fingerprint that changes on each login
-function useSessionFingerprint() {
-  const { identity } = useInternetIdentity();
-  const sessionFingerprintRef = useRef<string>(Date.now().toString());
-  
-  // Update session fingerprint when identity changes
-  useEffect(() => {
-    if (identity) {
-      sessionFingerprintRef.current = Date.now().toString();
-    }
-  }, [identity]);
-  
-  const principal = identity?.getPrincipal().toString();
-  const sessionFingerprint = identity ? sessionFingerprintRef.current : 'anonymous';
-  
-  return { principal, sessionFingerprint };
-}
 
 export function useGetEvents() {
   const { actor, isFetching: actorFetching } = useActor();
-  const { key } = useEncryptionSession();
-  const { principal, sessionFingerprint } = useSessionFingerprint();
+  const { identity } = useInternetIdentity();
+  const { key, sessionVersion } = useEncryptionSession();
+  
+  const principal = identity?.getPrincipal().toString();
 
   return useQuery<DecryptedEvent[], Error>({
-    queryKey: ['events', principal, sessionFingerprint],
+    queryKey: ['events', principal, sessionVersion],
     queryFn: async () => {
       if (!actor) {
         throw new Error('Connection not ready. Please wait or refresh the page.');
@@ -43,25 +26,25 @@ export function useGetEvents() {
         return Promise.all(encryptedEvents.map(event => decryptEvent(event, key)));
       } catch (error: any) {
         console.error('Failed to fetch events:', error);
-        throw new Error(error.message || 'Failed to load events. Please try logging out and back in.');
+        throw new Error(error.message || 'Failed to load events. Please try again.');
       }
     },
-    enabled: !!actor && !actorFetching && !!key && !!principal,
+    enabled: !!actor && !actorFetching && !!key && !!principal && sessionVersion > 0,
     retry: 1,
-    // Refetch on mount to ensure fresh data after session changes
     refetchOnMount: true,
-    // Don't use cached data from previous sessions
     staleTime: 0,
   });
 }
 
 export function useGetTasks() {
   const { actor, isFetching: actorFetching } = useActor();
-  const { key } = useEncryptionSession();
-  const { principal, sessionFingerprint } = useSessionFingerprint();
+  const { identity } = useInternetIdentity();
+  const { key, sessionVersion } = useEncryptionSession();
+  
+  const principal = identity?.getPrincipal().toString();
 
   return useQuery<DecryptedTask[], Error>({
-    queryKey: ['tasks', principal, sessionFingerprint],
+    queryKey: ['tasks', principal, sessionVersion],
     queryFn: async () => {
       if (!actor) {
         throw new Error('Connection not ready. Please wait or refresh the page.');
@@ -75,14 +58,12 @@ export function useGetTasks() {
         return Promise.all(encryptedTasks.map(task => decryptTask(task, key)));
       } catch (error: any) {
         console.error('Failed to fetch tasks:', error);
-        throw new Error(error.message || 'Failed to load tasks. Please try logging out and back in.');
+        throw new Error(error.message || 'Failed to load tasks. Please try again.');
       }
     },
-    enabled: !!actor && !actorFetching && !!key && !!principal,
+    enabled: !!actor && !actorFetching && !!key && !!principal && sessionVersion > 0,
     retry: 1,
-    // Refetch on mount to ensure fresh data after session changes
     refetchOnMount: true,
-    // Don't use cached data from previous sessions
     staleTime: 0,
   });
 }

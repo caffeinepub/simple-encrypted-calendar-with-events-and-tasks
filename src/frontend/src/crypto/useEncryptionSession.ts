@@ -6,8 +6,10 @@ import { useEffect } from 'react';
 interface EncryptionSessionState {
   key: CryptoKey | null;
   isUnlocking: boolean;
+  sessionVersion: number;
   setKey: (key: CryptoKey | null) => void;
   setIsUnlocking: (isUnlocking: boolean) => void;
+  incrementSessionVersion: () => void;
   lock: () => void;
   reset: () => void;
 }
@@ -15,10 +17,12 @@ interface EncryptionSessionState {
 const useEncryptionStore = create<EncryptionSessionState>((set) => ({
   key: null,
   isUnlocking: false,
+  sessionVersion: 0,
   setKey: (key) => set({ key }),
   setIsUnlocking: (isUnlocking) => set({ isUnlocking }),
+  incrementSessionVersion: () => set((state) => ({ sessionVersion: state.sessionVersion + 1 })),
   lock: () => set({ key: null }),
-  reset: () => set({ key: null, isUnlocking: false }),
+  reset: () => set({ key: null, isUnlocking: false, sessionVersion: 0 }),
 }));
 
 export function useEncryptionSession() {
@@ -47,6 +51,7 @@ export function useEncryptionSession() {
 
       const key = await deriveKey(passphrase, salt);
       store.setKey(key);
+      store.incrementSessionVersion();
       store.setIsUnlocking(false);
     } catch (error) {
       store.setIsUnlocking(false);
@@ -58,6 +63,7 @@ export function useEncryptionSession() {
     key: store.key,
     isUnlocked: store.key !== null,
     isUnlocking: store.isUnlocking,
+    sessionVersion: store.sessionVersion,
     unlock,
     lock: store.lock,
   };

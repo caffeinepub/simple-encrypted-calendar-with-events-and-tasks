@@ -1,57 +1,45 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-05T00:11:29.906Z",
+  "generatedAt": "2026-02-05T00:17:01.499Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Fix the post re-sign-in loading failure where the Events and Tasks views show errors like “Failed to load tasks” / “Failed to load events” after the user signs out and signs back in, by ensuring the backend actor is reliably recreated/refetched whenever the Internet Identity session changes (even when the user logs back in as the same principal). Update the actor React Query cache key and refetch behavior so `_initializeAccessControlWithSecret(...)` runs for the new session and subsequent calls do not trap as unauthorized/stale-session.",
+        "summary": "Refine the authenticated loading flow so the UI never shows the Events/Tasks views (or their query-driven error states) until all prerequisites are satisfied: (1) Internet Identity is authenticated, (2) the backend actor is ready, (3) the user profile has been fetched (and profile setup completed if needed), and (4) the encryption session is unlocked. When these prerequisites are not yet satisfied, show a clear, non-destructive loading state (English text) instead of rendering query error alerts.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useActor.ts",
-          "frontend/src/App.tsx"
+          "frontend/src/components/auth/AuthenticatedLoadingScreen.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/features/events/EventsView.tsx",
+          "frontend/src/features/tasks/TasksView.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/App.tsx"
+          "frontend/src/components/auth/AuthenticatedLoadingScreen.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/features/events/EventsView.tsx",
+          "frontend/src/features/tasks/TasksView.tsx"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Update React Query caching for calendar data so events/tasks queries are scoped to the currently authenticated principal (and do not reuse cached error/data across sign-out/sign-in cycles). Specifically, adjust the query keys used by the events and tasks queries so they change when the signed-in principal changes, and ensure queries refetch cleanly after re-authentication and unlock.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/api/calendarQueries.ts",
-          "frontend/src/features/events/EventsView.tsx",
-          "frontend/src/features/tasks/TasksView.tsx",
-          "frontend/src/components/layout/Shell.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/api/calendarQueries.ts",
-          "frontend/src/features/events/EventsView.tsx",
-          "frontend/src/features/tasks/TasksView.tsx",
-          "frontend/src/components/layout/Shell.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Harden the encryption unlock state handling so unlocking cannot leave the UI in an inconsistent state during re-sign-in flows. Ensure the encryption session “isUnlocking” state updates via Zustand state updates (not by mutating the store object directly), and that lock/unlock transitions do not prevent calendar queries from running when prerequisites (actor + key) are satisfied.",
+        "summary": "Adjust React Query behavior for events/tasks fetching so that, after a logout/login cycle (including logging back in as the same principal) and subsequent unlock, the events and tasks queries reliably refetch and render fresh decrypted data without requiring a manual page refresh or the user pressing “Retry”. This should be achieved by refining the query enable/refetch conditions and/or invalidation strategy tied to actor readiness and unlock state (without editing files in frontend immutablePaths).",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/crypto/useEncryptionSession.ts",
-          "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
-          "frontend/src/components/layout/Shell.tsx"
+          "frontend/src/api/calendarQueries.ts",
+          "frontend/src/api/calendarMutations.ts"
         ],
         "matchedFiles": [
           "frontend/src/crypto/useEncryptionSession.ts",
-          "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
-          "frontend/src/components/layout/Shell.tsx"
+          "frontend/src/api/calendarQueries.ts",
+          "frontend/src/api/calendarMutations.ts"
         ]
       }
     ]
@@ -62,13 +50,12 @@
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
+    "frontend/src/api/calendarMutations.ts",
     "frontend/src/api/calendarQueries.ts",
-    "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
-    "frontend/src/components/layout/Shell.tsx",
+    "frontend/src/components/auth/AuthenticatedLoadingScreen.tsx",
     "frontend/src/crypto/useEncryptionSession.ts",
     "frontend/src/features/events/EventsView.tsx",
     "frontend/src/features/tasks/TasksView.tsx",
-    "frontend/src/utils/urlParams.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

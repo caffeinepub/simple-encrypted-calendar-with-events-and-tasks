@@ -1,82 +1,62 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix re-sign-in actor/session scoping and React Query cache invalidation for events/tasks",
+  "title": "Stabilize calendar bootstrapping and React Query refresh across auth/actor/profile/unlock transitions",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Ensure the backend actor is recreated/refetched on any Internet Identity session change (even same principal) so access-control initialization reruns and events/tasks no longer fail after re-sign-in.",
+      "summary": "Gate Events/Tasks rendering behind auth + actor readiness + user profile readiness + encryption unlock, and show a consistent, non-destructive authenticated loading state while prerequisites resolve (English text only).",
       "acceptanceCriteria": [
-        "Using the reproduction steps (sign in → create an event + task → save → lock → sign out → sign back in → unlock), the app loads events and tasks successfully without showing “Failed to load events” or “Failed to load tasks”.",
-        "After signing back in, the frontend must not reuse an actor instance initialized with a previous identity session; the actor must be re-created or re-initialized for the new identity session before events/tasks queries run.",
-        "No manual page refresh is required to make events/tasks load after re-sign-in."
+        "After login (and after re-login), the app displays a consistent loading state while the actor/profile/unlock requirements are still resolving.",
+        "EventsView and TasksView are not rendered in a way that can produce a transient destructive error alert during normal startup (e.g., while actor/key/principal are still becoming available).",
+        "All user-facing loading/error text introduced or modified is in English."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useActor.ts",
-          "operation": "modify",
-          "description": "Update the actor React Query cache key to include a per-auth-session fingerprint (not just principal) so a new actor is created after re-login even when the principal is unchanged; adjust refetch behavior so `_initializeAccessControlWithSecret(...)` reliably runs for the new session and dependent queries only refetch once the new actor is ready. Use the authorization component’s frontend guidance for clearing cached application data on logout/session changes; verify the component's usage instructions before implementing."
+          "path": "frontend/src/components/auth/AuthenticatedLoadingScreen.tsx",
+          "operation": "create",
+          "description": "Add an authenticated-only loading screen component that explains the app is preparing the secure calendar (English text), without showing destructive alerts; include minimal layout consistent with existing app styling. Verify the component's usage instructions before implementing."
         },
         {
           "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Ensure the app shell and calendar views only render once the updated actor/session prerequisites are satisfied (authenticated + profile + unlocked), preventing events/tasks queries from running against a stale actor during re-sign-in transitions. Use the authorization component’s frontend guidance (logged-in required before showing application data); verify the component's usage instructions before implementing."
+          "description": "Refine the authenticated boot flow so that when identity is present but actor/profile prerequisites are still resolving, the app renders AuthenticatedLoadingScreen instead of rendering nothing (and still renders ProfileSetupModal / PassphraseUnlockModal / Shell only when their prerequisites are satisfied). Ensure Events/Tasks views cannot mount before actor + profile + unlock are ready. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/features/events/EventsView.tsx",
+          "operation": "modify",
+          "description": "Harden the view against prerequisite-transition states by avoiding destructive error UI for known non-fatal startup conditions (e.g., actor/key temporarily unavailable) and showing a neutral loading/pending state instead; keep genuine fetch/decrypt failures actionable via Retry. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/features/tasks/TasksView.tsx",
+          "operation": "modify",
+          "description": "Mirror EventsView behavior: suppress destructive error UI for known non-fatal startup conditions during normal startup transitions and show a neutral loading/pending state instead; keep genuine fetch/decrypt failures actionable via Retry. Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Scope calendar React Query caches to the currently authenticated principal/session and ensure clean refetch after re-authentication and unlock.",
+      "summary": "Make events/tasks React Query refetch reliably after logout/login (even same principal) and subsequent unlock by tying query enablement and cache keys/invalidation to actor readiness and encryption unlock state, without touching immutablePaths.",
       "acceptanceCriteria": [
-        "Signing out and signing back in does not leave EventsView/TasksView stuck in an error state due to previously cached query errors.",
-        "Events and tasks data shown always corresponds to the currently signed-in principal.",
-        "After unlocking the encryption session post-login, events/tasks automatically load without requiring the user to press Retry."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/api/calendarQueries.ts",
-          "operation": "modify",
-          "description": "Adjust events/tasks query keys to include the current principal (and, if available from the actor/auth layer, the same session fingerprint used for the actor) so cached data/errors cannot leak across sign-out/sign-in; update query options to refetch cleanly when the actor becomes ready and when the encryption session transitions to unlocked (e.g., refetch-on-mount and avoiding reuse of cached error states)."
-        },
-        {
-          "path": "frontend/src/features/events/EventsView.tsx",
-          "operation": "modify",
-          "description": "Remove reliance on manual page refresh to recover from auth/session transitions by ensuring the view’s error/loading UX aligns with the updated query behavior (automatic refetch after session+unlock readiness), while keeping UI composition limited to existing shadcn/ui components (read-only under frontend/src/components/ui)."
-        },
-        {
-          "path": "frontend/src/features/tasks/TasksView.tsx",
-          "operation": "modify",
-          "description": "Align tasks view error/loading UX with the updated principal/session-scoped query keys and refetch behavior so the view recovers automatically after re-login + unlock without requiring Retry or Refresh Page, composing (not editing) shadcn/ui components."
-        },
-        {
-          "path": "frontend/src/components/layout/Shell.tsx",
-          "operation": "modify",
-          "description": "On logout, clear all cached application data and ensure any user-scoped in-memory state is reset so the next sign-in starts from a clean cache (per authorization component guidance); verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Fix encryption unlock state handling to use proper Zustand updates and ensure lock/unlock transitions don’t block calendar queries once actor + key prerequisites are met.",
-      "acceptanceCriteria": [
-        "Unlocking updates the UI state consistently (no stuck loading/spinner states), including after a sign-out/sign-in cycle.",
-        "After unlocking, events/tasks queries become enabled and execute successfully when the actor is ready."
+        "Repro path: login → unlock → create at least one event/task → logout → login again → unlock → events/tasks load automatically and display the saved items.",
+        "No persistent “Failed to load events” / “Failed to load tasks” error appears in the above flow unless there is an actual backend/decryption failure.",
+        "If a real fetch/decrypt error occurs, the error state remains actionable (e.g., Retry still works) and does not get stuck due to stale query state from a prior session."
       ],
       "file_operations": [
         {
           "path": "frontend/src/crypto/useEncryptionSession.ts",
           "operation": "modify",
-          "description": "Replace direct Zustand store mutation for `isUnlocking` with proper Zustand state updates; ensure lock/unlock transitions are consistent and reset appropriately on identity changes (e.g., logout or principal change) so the UI cannot remain in a stale unlocking/loading state and queries can enable when actor + key are satisfied."
+          "description": "Extend the encryption session store to expose a monotonically increasing unlock/session version (or similar) that changes on successful unlock and resets on lock/logout, so other code can reliably detect a new decryption context."
         },
         {
-          "path": "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
+          "path": "frontend/src/api/calendarQueries.ts",
           "operation": "modify",
-          "description": "Ensure the unlock modal reflects the corrected `isUnlocking` Zustand state (button disabling and label updates) so it cannot get stuck during re-sign-in flows and unlock reliably triggers the app to proceed to the shell where queries run."
+          "description": "Refine events/tasks query keys and enablement to incorporate (a) authenticated principal, (b) actor readiness, and (c) the encryption session's unlock/session version so that after re-login and unlock, queries automatically run against the fresh decryption context and do not remain stuck in prior-session error states; keep retry/refetch behavior actionable and avoid running queries before prerequisites are satisfied."
         },
         {
-          "path": "frontend/src/components/layout/Shell.tsx",
+          "path": "frontend/src/api/calendarMutations.ts",
           "operation": "modify",
-          "description": "Ensure lock/logout actions reset encryption state predictably (lock clears key; logout clears key + cached queries) so subsequent re-login and unlock transitions always allow calendar queries to run when ready, while composing (not editing) shadcn/ui components."
+          "description": "Align mutation invalidation/refetch strategy with the refined query keys (including the unlock/session version where appropriate) so post-mutation lists stay consistent after relogin/unlock cycles, without requiring a manual refresh or user pressing Retry."
         }
       ]
     }

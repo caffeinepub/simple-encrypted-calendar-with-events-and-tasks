@@ -1,6 +1,7 @@
 import { useInternetIdentity } from './hooks/useInternetIdentity';
 import { useGetCallerUserProfile } from './hooks/useCurrentUserProfile';
 import { LoginScreen } from './components/auth/LoginScreen';
+import { AuthenticatedLoadingScreen } from './components/auth/AuthenticatedLoadingScreen';
 import { ProfileSetupModal } from './components/auth/ProfileSetupModal';
 import { PassphraseUnlockModal } from './components/crypto/PassphraseUnlockModal';
 import { Shell } from './components/layout/Shell';
@@ -22,6 +23,9 @@ export default function App() {
   // Wait for actor to be ready before showing profile setup or unlock
   const actorReady = !!actor && !actorFetching;
   
+  // Show authenticated loading screen while prerequisites are resolving
+  const showAuthenticatedLoading = isAuthenticated && (!actorReady || (profileLoading && !isFetched));
+  
   const showProfileSetup = isAuthenticated && actorReady && !profileLoading && isFetched && userProfile === null;
   const showPassphraseUnlock = isAuthenticated && actorReady && userProfile !== null && !isUnlocked;
   const showApp = isAuthenticated && actorReady && userProfile !== null && isUnlocked;
@@ -35,6 +39,7 @@ export default function App() {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <div className="min-h-screen bg-background">
         {!isAuthenticated && <LoginScreen />}
+        {showAuthenticatedLoading && <AuthenticatedLoadingScreen />}
         {showProfileSetup && <ProfileSetupModal />}
         {showPassphraseUnlock && <PassphraseUnlockModal onLogout={handleLogout} />}
         {showApp && <Shell />}

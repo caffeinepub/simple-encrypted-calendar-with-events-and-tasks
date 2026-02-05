@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useGetTasks } from '../../api/calendarQueries';
+import { useActor } from '../../hooks/useActor';
+import { useEncryptionSession } from '../../crypto/useEncryptionSession';
 import { TaskFormDialog } from './TaskFormDialog';
 import { TaskCard } from './TaskCard';
 import { Button } from '@/components/ui/button';
@@ -10,28 +12,70 @@ import { Plus, CheckSquare, AlertCircle, RefreshCw } from 'lucide-react';
 
 export function TasksView() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { actor, isFetching: actorFetching } = useActor();
+  const { key, sessionVersion } = useEncryptionSession();
   const { data: tasks, isLoading, error, refetch } = useGetTasks();
 
+  // Check if we're in a transient startup state (prerequisites not yet ready)
+  const isStartupPending = !actor || actorFetching || !key || sessionVersion === 0;
+
+  // Show loading state during startup or actual data fetch
+  if (isStartupPending || isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Tasks</h2>
+            <p className="text-sm text-muted-foreground">Manage your encrypted to-do list</p>
+          </div>
+          <Button disabled>
+            <Plus className="w-4 h-4 mr-2" />
+            New Task
+          </Button>
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Only show destructive error if prerequisites are ready but fetch genuinely failed
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Failed to load tasks</AlertTitle>
-        <AlertDescription className="mt-2 space-y-2">
-          <p>{error.message}</p>
-          <div className="flex gap-2 mt-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => refetch()}
-              className="gap-2"
-            >
-              <RefreshCw className="h-3 w-3" />
-              Retry
-            </Button>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Tasks</h2>
+            <p className="text-sm text-muted-foreground">Manage your encrypted to-do list</p>
           </div>
-        </AlertDescription>
-      </Alert>
+        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Failed to load tasks</AlertTitle>
+          <AlertDescription className="mt-2 space-y-2">
+            <p>{error.message}</p>
+            <div className="flex gap-2 mt-3">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => refetch()}
+                className="gap-2"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Retry
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
@@ -51,18 +95,7 @@ export function TasksView() {
         </Button>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-5 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardHeader>
-            </Card>
-          ))}
-        </div>
-      ) : tasks && tasks.length > 0 ? (
+      {tasks && tasks.length > 0 ? (
         <div className="space-y-6">
           {incompleteTasks.length > 0 && (
             <div className="space-y-3">

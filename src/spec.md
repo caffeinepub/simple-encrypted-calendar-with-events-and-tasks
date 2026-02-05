@@ -1,11 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Fix events/tasks failing to load after signing out and back in by ensuring the frontend reinitializes the backend actor and React Query state for the new Internet Identity session, and by making unlock state transitions reliable.
+**Goal:** Ensure calendar Events/Tasks screens only load after auth, actor, profile, and unlock prerequisites are satisfied, and make events/tasks data reliably refetch after logout/login/unlock cycles.
 
 **Planned changes:**
-- Recreate/refetch the backend actor whenever the Internet Identity session changes (including re-login as the same principal) so access control initialization runs for the active session before events/tasks queries execute.
-- Update React Query keys and refetch/invalidation behavior so events/tasks queries are scoped to the currently authenticated principal and do not reuse cached errors/data across sign-out/sign-in cycles.
-- Harden encryption unlock flow state updates by using proper Zustand state updates (no direct mutation) to prevent stuck unlocking/loading states and ensure calendar queries enable and run once actor + key prerequisites are satisfied.
+- Gate rendering of EventsView/TasksView behind prerequisite readiness (authenticated, actor ready, profile fetched/setup complete, encryption session unlocked) and show a clear non-destructive English loading state while resolving.
+- Refine React Query enable/refetch/invalidation logic for events/tasks so queries refetch and display fresh decrypted data automatically after logout/login (including same principal) and unlock, without requiring manual refresh or “Retry”.
+- Preserve actionable error states for real backend/decryption failures while preventing transient startup query-error alerts during normal initialization.
 
-**User-visible outcome:** After signing out and signing back in (then unlocking), Events and Tasks load automatically without “Failed to load events/tasks” errors and without requiring a manual page refresh or Retry.
+**User-visible outcome:** After login (including re-login), users see a consistent loading screen until everything is ready; once unlocked, events and tasks load automatically and reliably (including after a logout/login cycle) without transient “failed to load” alerts unless a real error occurs.

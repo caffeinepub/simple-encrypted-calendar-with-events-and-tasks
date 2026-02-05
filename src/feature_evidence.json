@@ -2,10 +2,13 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-fix-the-post-re-sign-in-loading-failure-where-the-events-and-tasks-views-show-errors-like-failed-to-load-tasks-failed-to-load-events-after-the-user-signs-out-and-signs-back-in-by-ensuring-the-backend-actor-is-reliably-recreated-refetched-whenever-the-internet-identity-session-changes-even-when-the-user-logs-back-in-as-the-same-principal-update-the-actor-react-query-cache-key-and-refetch-behavior-so-initializeaccesscontrolwithsecret-runs-for-the-new-session-and-subsequent-calls-do-not-trap-as-unauthorized-stale-session",
-      "featureTitle": "Fix the post re-sign-in loading failure where the Events and Tasks views show errors like “Failed to load tasks” / “Failed to load events” after the user signs out and signs back in, by ensuring the backend actor is reliably recreated/refetched whenever the Internet Identity session changes (even when the user logs back in as the same principal). Update the actor React Query cache key and refetch behavior so `_initializeAccessControlWithSecret(...)` runs for the new session and subsequent calls do not trap as unauthorized/stale-session.",
+      "featureId": "feature-refine-the-authenticated-loading-flow-so-the-ui-never-shows-the-events-tasks-views-or-their-query-driven-error-states-until-all-prerequisites-are-satisfied-1-internet-identity-is-authenticated-2-the-backend-actor-is-ready-3-the-user-profile-has-been-fetched-and-profile-setup-completed-if-needed-and-4-the-encryption-session-is-unlocked-when-these-prerequisites-are-not-yet-satisfied-show-a-clear-non-destructive-loading-state-english-text-instead-of-rendering-query-error-alerts",
+      "featureTitle": "Refine the authenticated loading flow so the UI never shows the Events/Tasks views (or their query-driven error states) until all prerequisites are satisfied: (1) Internet Identity is authenticated, (2) the backend actor is ready, (3) the user profile has been fetched (and profile setup completed if needed), and (4) the encryption session is unlocked. When these prerequisites are not yet satisfied, show a clear, non-destructive loading state (English text) instead of rendering query error alerts.",
       "files": [
-        "frontend/src/App.tsx"
+        "frontend/src/App.tsx",
+        "frontend/src/components/auth/AuthenticatedLoadingScreen.tsx",
+        "frontend/src/features/events/EventsView.tsx",
+        "frontend/src/features/tasks/TasksView.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -21,33 +24,11 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-react-query-caching-for-calendar-data-so-events-tasks-queries-are-scoped-to-the-currently-authenticated-principal-and-do-not-reuse-cached-error-data-across-sign-out-sign-in-cycles-specifically-adjust-the-query-keys-used-by-the-events-and-tasks-queries-so-they-change-when-the-signed-in-principal-changes-and-ensure-queries-refetch-cleanly-after-re-authentication-and-unlock",
-      "featureTitle": "Update React Query caching for calendar data so events/tasks queries are scoped to the currently authenticated principal (and do not reuse cached error/data across sign-out/sign-in cycles). Specifically, adjust the query keys used by the events and tasks queries so they change when the signed-in principal changes, and ensure queries refetch cleanly after re-authentication and unlock.",
+      "featureId": "feature-adjust-react-query-behavior-for-events-tasks-fetching-so-that-after-a-logout-login-cycle-including-logging-back-in-as-the-same-principal-and-subsequent-unlock-the-events-and-tasks-queries-reliably-refetch-and-render-fresh-decrypted-data-without-requiring-a-manual-page-refresh-or-the-user-pressing-retry-this-should-be-achieved-by-refining-the-query-enable-refetch-conditions-and-or-invalidation-strategy-tied-to-actor-readiness-and-unlock-state-without-editing-files-in-frontend-immutablepaths",
+      "featureTitle": "Adjust React Query behavior for events/tasks fetching so that, after a logout/login cycle (including logging back in as the same principal) and subsequent unlock, the events and tasks queries reliably refetch and render fresh decrypted data without requiring a manual page refresh or the user pressing “Retry”. This should be achieved by refining the query enable/refetch conditions and/or invalidation strategy tied to actor readiness and unlock state (without editing files in frontend immutablePaths).",
       "files": [
+        "frontend/src/api/calendarMutations.ts",
         "frontend/src/api/calendarQueries.ts",
-        "frontend/src/components/layout/Shell.tsx",
-        "frontend/src/features/events/EventsView.tsx",
-        "frontend/src/features/tasks/TasksView.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-harden-the-encryption-unlock-state-handling-so-unlocking-cannot-leave-the-ui-in-an-inconsistent-state-during-re-sign-in-flows-ensure-the-encryption-session-isunlocking-state-updates-via-zustand-state-updates-not-by-mutating-the-store-object-directly-and-that-lock-unlock-transitions-do-not-prevent-calendar-queries-from-running-when-prerequisites-actor-key-are-satisfied",
-      "featureTitle": "Harden the encryption unlock state handling so unlocking cannot leave the UI in an inconsistent state during re-sign-in flows. Ensure the encryption session “isUnlocking” state updates via Zustand state updates (not by mutating the store object directly), and that lock/unlock transitions do not prevent calendar queries from running when prerequisites (actor + key) are satisfied.",
-      "files": [
-        "frontend/src/components/crypto/PassphraseUnlockModal.tsx",
-        "frontend/src/components/layout/Shell.tsx",
         "frontend/src/crypto/useEncryptionSession.ts"
       ],
       "components": [
@@ -59,7 +40,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-2"
       ],
       "confidence": "high"
     }

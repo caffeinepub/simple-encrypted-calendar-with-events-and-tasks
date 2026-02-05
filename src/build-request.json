@@ -1,72 +1,52 @@
 {
   "kind": "build_request",
-  "title": "Fix events/tasks failing to load after re-sign-in (actor + query cache invalidation)",
-  "priority": "high",
+  "title": "Refine calendar loading logic across auth/actor/unlock transitions",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Fix the post re-sign-in loading failure where the Events and Tasks views show errors like “Failed to load tasks” / “Failed to load events” after the user signs out and signs back in, by ensuring the backend actor is reliably recreated/refetched whenever the Internet Identity session changes (even when the user logs back in as the same principal). Update the actor React Query cache key and refetch behavior so `_initializeAccessControlWithSecret(...)` runs for the new session and subsequent calls do not trap as unauthorized/stale-session.",
+      "text": "Refine the authenticated loading flow so the UI never shows the Events/Tasks views (or their query-driven error states) until all prerequisites are satisfied: (1) Internet Identity is authenticated, (2) the backend actor is ready, (3) the user profile has been fetched (and profile setup completed if needed), and (4) the encryption session is unlocked. When these prerequisites are not yet satisfied, show a clear, non-destructive loading state (English text) instead of rendering query error alerts.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-4"
         ],
         "quotes": [
-          "after I re-sign in, it's having loading issues. It's saying, fail to load task",
-          "I signed out. I signed back in. But when I signed in, the events did not show up. Instead, it said fail to load task or fail to load events."
+          "Let's refine the loading logic next."
         ]
       },
       "acceptanceCriteria": [
-        "Using the reproduction steps (sign in → create an event + task → save → lock → sign out → sign back in → unlock), the app loads events and tasks successfully without showing “Failed to load events” or “Failed to load tasks”.",
-        "After signing back in, the frontend must not reuse an actor instance initialized with a previous identity session; the actor must be re-created or re-initialized for the new identity session before events/tasks queries run.",
-        "No manual page refresh is required to make events/tasks load after re-sign-in."
+        "After login (and after re-login), the app displays a consistent loading state while the actor/profile/unlock requirements are still resolving.",
+        "EventsView and TasksView are not rendered in a way that can produce a transient destructive error alert during normal startup (e.g., while actor/key/principal are still becoming available).",
+        "All user-facing loading/error text introduced or modified is in English."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update React Query caching for calendar data so events/tasks queries are scoped to the currently authenticated principal (and do not reuse cached error/data across sign-out/sign-in cycles). Specifically, adjust the query keys used by the events and tasks queries so they change when the signed-in principal changes, and ensure queries refetch cleanly after re-authentication and unlock.",
+      "text": "Adjust React Query behavior for events/tasks fetching so that, after a logout/login cycle (including logging back in as the same principal) and subsequent unlock, the events and tasks queries reliably refetch and render fresh decrypted data without requiring a manual page refresh or the user pressing “Retry”. This should be achieved by refining the query enable/refetch conditions and/or invalidation strategy tied to actor readiness and unlock state (without editing files in frontend immutablePaths).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-4"
         ],
         "quotes": [
-          "when I signed in, the events did not show up. Instead, it said fail to load task or fail to load events."
+          "Let's refine the loading logic next."
         ]
       },
       "acceptanceCriteria": [
-        "Signing out and signing back in does not leave EventsView/TasksView stuck in an error state due to previously cached query errors.",
-        "Events and tasks data shown always corresponds to the currently signed-in principal.",
-        "After unlocking the encryption session post-login, events/tasks automatically load without requiring the user to press Retry."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Harden the encryption unlock state handling so unlocking cannot leave the UI in an inconsistent state during re-sign-in flows. Ensure the encryption session “isUnlocking” state updates via Zustand state updates (not by mutating the store object directly), and that lock/unlock transitions do not prevent calendar queries from running when prerequisites (actor + key) are satisfied.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "it worked for a minute, but then after I re-sign in, it's having loading issues."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Unlocking updates the UI state consistently (no stuck loading/spinner states), including after a sign-out/sign-in cycle.",
-        "After unlocking, events/tasks queries become enabled and execute successfully when the actor is ready."
+        "Repro path: login → unlock → create at least one event/task → logout → login again → unlock → events/tasks load automatically and display the saved items.",
+        "No persistent “Failed to load events” / “Failed to load tasks” error appears in the above flow unless there is an actual backend/decryption failure.",
+        "If a real fetch/decrypt error occurs, the error state remains actionable (e.g., Retry still works) and does not get stuck due to stale query state from a prior session."
       ]
     }
   ],
   "constraints": [
-    "Do not edit files under frontend/src/components/ui (shadcn/ui components are read-only and must only be composed).",
-    "Do not modify immutable paths listed in SYSTEM_CONTEXT (e.g., frontend/src/hooks/useInternetIdentity.ts(x), frontend/src/hooks/useActor.ts is allowed).",
-    "Backend must remain a single Motoko actor (no additional canisters/services)."
+    "Do not edit any files under frontend.immutablePaths (e.g., frontend/src/hooks/useInternetIdentity.ts(x), frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui).",
+    "Respect the existing single-canister backend architecture; this request should be solvable purely via frontend loading/query behavior unless a backend defect is clearly identified."
   ],
   "nonGoals": [
-    "Do not add new product features to events/tasks beyond fixing the re-sign-in loading regression.",
-    "Do not change the encrypted event/task data model or introduce new backend storage unless required to fix this specific loading issue.",
-    "Do not add third-party authentication providers beyond Internet Identity."
+    "Adding new product features beyond refining loading behavior (no new calendar capabilities, no new auth providers).",
+    "Changing the encryption scheme or re-encrypting existing stored data."
   ],
   "imageRequirements": {
     "required": [],
